@@ -61,23 +61,24 @@ pub fn execute_main_loop(allocator: *std.mem.Allocator, rt: *raytracer.Raytracer
         return error.SDLInitializationFailed;
     }
 
-    const ren = c.SDL_CreateRenderer(window, -1, c.SDL_RENDERER_ACCELERATED) orelse {
+    const renderer = c.SDL_CreateRenderer(window, -1, c.SDL_RENDERER_ACCELERATED) orelse {
         c.SDL_Log("Unable to create renderer: %s", c.SDL_GetError());
         return error.SDLInitializationFailed;
     };
-    defer c.SDL_DestroyRenderer(ren);
+    defer c.SDL_DestroyRenderer(renderer);
 
-    var rmask: u32 = if (c.SDL_BYTEORDER == c.SDL_BIG_ENDIAN) 0xff000000 else 0x000000ff;
-    var gmask: u32 = if (c.SDL_BYTEORDER == c.SDL_BIG_ENDIAN) 0x00ff0000 else 0x0000ff00;
-    var bmask: u32 = if (c.SDL_BYTEORDER == c.SDL_BIG_ENDIAN) 0x0000ff00 else 0x00ff0000;
-    var amask: u32 = if (c.SDL_BYTEORDER == c.SDL_BIG_ENDIAN) 0x000000ff else 0xff000000;
+    const is_big_endian = c.SDL_BYTEORDER == c.SDL_BIG_ENDIAN;
+    var rmask: u32 = if (is_big_endian) 0xff000000 else 0x000000ff;
+    var gmask: u32 = if (is_big_endian) 0x00ff0000 else 0x0000ff00;
+    var bmask: u32 = if (is_big_endian) 0x0000ff00 else 0x00ff0000;
+    var amask: u32 = if (is_big_endian) 0x000000ff else 0xff000000;
     var pitch: u32 = stride;
 
-    const surf = c.SDL_CreateRGBSurfaceFrom(@ptrCast(*c_void, &image_cpu[0]), @intCast(c_int, width), @intCast(c_int, height), @intCast(c_int, ImageCpuBitDepth), @intCast(c_int, pitch), rmask, gmask, bmask, amask) orelse {
+    const render_surface = c.SDL_CreateRGBSurfaceFrom(@ptrCast(*c_void, &image_cpu[0]), @intCast(c_int, width), @intCast(c_int, height), @intCast(c_int, ImageCpuBitDepth), @intCast(c_int, pitch), rmask, gmask, bmask, amask) orelse {
         c.SDL_Log("Unable to create surface: %s", c.SDL_GetError());
         return error.SDLInitializationFailed;
     };
-    defer c.SDL_FreeSurface(surf);
+    defer c.SDL_FreeSurface(render_surface);
 
     var shouldExit = false;
     var last_frame_time_ms: u32 = c.SDL_GetTicks();
@@ -116,17 +117,17 @@ pub fn execute_main_loop(allocator: *std.mem.Allocator, rt: *raytracer.Raytracer
         // Render
         fill_image_buffer(image_cpu, rt);
 
-        const tex = c.SDL_CreateTextureFromSurface(ren, surf) orelse {
+        const render_texture = c.SDL_CreateTextureFromSurface(renderer, render_surface) orelse {
             c.SDL_Log("Unable to create texture from surface: %s", c.SDL_GetError());
             return error.SDLInitializationFailed;
         };
-        defer c.SDL_DestroyTexture(tex);
+        defer c.SDL_DestroyTexture(render_texture);
 
-        _ = c.SDL_RenderClear(ren);
-        _ = c.SDL_RenderCopy(ren, tex, null, null);
+        _ = c.SDL_RenderClear(renderer);
+        _ = c.SDL_RenderCopy(renderer, render_texture, null, null);
 
         // Present
-        c.SDL_RenderPresent(ren);
+        c.SDL_RenderPresent(renderer);
 
         last_frame_time_ms = current_frame_time_ms;
     }
