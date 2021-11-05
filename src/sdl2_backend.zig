@@ -6,9 +6,27 @@ const c = @cImport({
 });
 
 const raytracer = @import("raytracer.zig");
+const f32_3 = raytracer.f32_3;
 
 const PixelFormatBGRASizeInBytes: u32 = 4;
 const ImageCpuBitDepth: u32 = 32;
+
+fn linear_to_srgb(color: f32_3) f32_3 {
+    // FIXME not technically correct but close enough
+    const gamma: f32 = 1.0 / 2.2;
+    return .{
+        std.math.pow(f32, color[0], gamma),
+        std.math.pow(f32, color[1], gamma),
+        std.math.pow(f32, color[2], gamma),
+    };
+}
+
+fn process_pixel(scene_color: raytracer.f32_4) [4]u8 {
+    const sample_count = std.math.max(1.0, scene_color[3]);
+    const swapchain_pixel = linear_to_srgb(f32_3{ scene_color[0], scene_color[1], scene_color[2] } / @splat(3, sample_count));
+
+    return [4]u8{ @floatToInt(u8, std.math.min(1.0, swapchain_pixel[0]) * 255.0), @floatToInt(u8, std.math.min(1.0, swapchain_pixel[1]) * 255.0), @floatToInt(u8, std.math.min(1.0, swapchain_pixel[2]) * 255.0), 255 };
+}
 
 fn fill_image_buffer(imageOutput: []u8, rt: *raytracer.RaytracerState) void {
     var j: u32 = 0;
@@ -17,16 +35,9 @@ fn fill_image_buffer(imageOutput: []u8, rt: *raytracer.RaytracerState) void {
         while (i < rt.frame_extent[0]) : (i += 1) {
             const pixelIndexFlatDst = j * rt.frame_extent[0] + i;
             const pixelOutputOffsetInBytes = pixelIndexFlatDst * PixelFormatBGRASizeInBytes;
-            const scene_pixel = rt.framebuffer[i][j];
-            const sample_count = std.math.max(1.0, scene_pixel[3]);
-            const swapchain_pixel = raytracer.f32_3{ scene_pixel[0], scene_pixel[1], scene_pixel[2] } / @splat(3, sample_count);
 
-            const primaryColorBGRA = [4]u8{
-                @floatToInt(u8, std.math.min(1.0, swapchain_pixel[0]) * 255.0),
-                @floatToInt(u8, std.math.min(1.0, swapchain_pixel[1]) * 255.0),
-                @floatToInt(u8, std.math.min(1.0, swapchain_pixel[2]) * 255.0),
-                255,
-            };
+            const primaryColorBGRA = process_pixel(rt.framebuffer[i][j]);
+
             imageOutput[pixelOutputOffsetInBytes + 0] = primaryColorBGRA[0];
             imageOutput[pixelOutputOffsetInBytes + 1] = primaryColorBGRA[1];
             imageOutput[pixelOutputOffsetInBytes + 2] = primaryColorBGRA[2];
