@@ -11,6 +11,8 @@ test "Critical path" {
 
     const allocator: *std.mem.Allocator = std.heap.page_allocator;
 
-    var game_state = try create_raytracer_state(allocator, extent, test_seed);
-    defer destroy_raytracer_state(allocator, &game_state);
+    var rt = try create_raytracer_state(allocator, extent, test_seed);
+    defer destroy_raytracer_state(allocator, &rt);
+
+    _ = render_workload(&rt, 4);
 }

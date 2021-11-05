@@ -1,7 +1,7 @@
 const std = @import("std");
 const assert = std.debug.assert;
 
-//const sdl2 = @import("sdl2_backend.zig");
+const sdl2 = @import("sdl2_backend.zig");
 const raytracer = @import("raytracer.zig");
 
 pub fn main() !void {
@@ -22,9 +22,9 @@ pub fn main() !void {
     std.crypto.random.bytes(buf[0..]);
     const seed = std.mem.readIntSliceLittle(u64, buf[0..8]);
 
-    // Create game state
-    var rt_state = try raytracer.create_raytracer_state(&gpa.allocator, .{ extent_x, extent_y }, seed);
-    defer raytracer.destroy_raytracer_state(&gpa.allocator, &rt_state);
+    // Create state
+    var rt = try raytracer.create_raytracer_state(&gpa.allocator, .{ extent_x, extent_y }, seed);
+    defer raytracer.destroy_raytracer_state(&gpa.allocator, &rt);
 
-    // try sdl2.execute_main_loop(&gpa.allocator, &rt_state);
+    try sdl2.execute_main_loop(&gpa.allocator, &rt);
 }
