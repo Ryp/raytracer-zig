@@ -18,7 +18,7 @@ fn any(vector: anytype) bool {
     return @reduce(.Or, vector);
 }
 
-pub const u32_2 = std.meta.Vector(2, u32);
+pub const @"u32_2" = std.meta.Vector(2, u32);
 
 pub const f32_2 = std.meta.Vector(2, f32);
 pub const f32_3 = std.meta.Vector(3, f32);
