@@ -29,5 +29,7 @@ pub fn build(b: *Builder) void {
 
     const test_step = b.step("test", "Run tests");
     const a_test = b.addTest("src/test.zig");
+
+    a_test.setBuildMode(mode);
     test_step.dependOn(&a_test.step);
 }
