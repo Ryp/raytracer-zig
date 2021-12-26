@@ -9,8 +9,8 @@ pub fn main() !void {
     defer _ = gpa.deinit();
 
     // Parse arguments
-    const args = try std.process.argsAlloc(&gpa.allocator);
-    defer std.process.argsFree(&gpa.allocator, args);
+    const args = try std.process.argsAlloc(gpa.allocator());
+    defer std.process.argsFree(gpa.allocator(), args);
 
     assert(args.len == 3);
 
@@ -23,8 +23,8 @@ pub fn main() !void {
     const seed = std.mem.readIntSliceLittle(u64, buf[0..8]);
 
     // Create state
-    var rt = try raytracer.create_raytracer_state(&gpa.allocator, .{ extent_x, extent_y }, seed);
-    defer raytracer.destroy_raytracer_state(&gpa.allocator, &rt);
+    var rt = try raytracer.create_raytracer_state(gpa.allocator(), .{ extent_x, extent_y }, seed);
+    defer raytracer.destroy_raytracer_state(gpa.allocator(), &rt);
 
-    try sdl2.execute_main_loop(&gpa.allocator, &rt);
+    try sdl2.execute_main_loop(gpa.allocator(), &rt);
 }

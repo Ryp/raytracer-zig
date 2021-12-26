@@ -22,10 +22,10 @@ fn linear_to_srgb(color: f32_3) f32_3 {
 }
 
 fn process_pixel(scene_color: raytracer.f32_4) [4]u8 {
-    const sample_count = std.math.max(1.0, scene_color[3]);
+    const sample_count = @maximum(1.0, scene_color[3]);
     const swapchain_pixel = linear_to_srgb(f32_3{ scene_color[0], scene_color[1], scene_color[2] } / @splat(3, sample_count));
 
-    return [4]u8{ @floatToInt(u8, std.math.min(1.0, swapchain_pixel[0]) * 255.0), @floatToInt(u8, std.math.min(1.0, swapchain_pixel[1]) * 255.0), @floatToInt(u8, std.math.min(1.0, swapchain_pixel[2]) * 255.0), 255 };
+    return [4]u8{ @floatToInt(u8, @minimum(1.0, swapchain_pixel[0]) * 255.0), @floatToInt(u8, @minimum(1.0, swapchain_pixel[1]) * 255.0), @floatToInt(u8, @minimum(1.0, swapchain_pixel[2]) * 255.0), 255 };
 }
 
 fn fill_image_buffer(imageOutput: []u8, rt: *raytracer.RaytracerState) void {
@@ -46,7 +46,7 @@ fn fill_image_buffer(imageOutput: []u8, rt: *raytracer.RaytracerState) void {
     }
 }
 
-pub fn execute_main_loop(allocator: *std.mem.Allocator, rt: *raytracer.RaytracerState) !void {
+pub fn execute_main_loop(allocator: std.mem.Allocator, rt: *raytracer.RaytracerState) !void {
     const width = rt.frame_extent[0];
     const height = rt.frame_extent[1];
     const stride = width * PixelFormatBGRASizeInBytes; // No extra space between lines
@@ -67,7 +67,7 @@ pub fn execute_main_loop(allocator: *std.mem.Allocator, rt: *raytracer.Raytracer
     };
     defer c.SDL_DestroyWindow(window);
 
-    if (c.SDL_SetHint(c.SDL_HINT_RENDER_VSYNC, "1") == c.SDL_bool.SDL_FALSE) {
+    if (c.SDL_SetHint(c.SDL_HINT_RENDER_VSYNC, "1") == c.SDL_FALSE) {
         c.SDL_Log("Unable to set hint: %s", c.SDL_GetError());
         return error.SDLInitializationFailed;
     }
@@ -85,7 +85,7 @@ pub fn execute_main_loop(allocator: *std.mem.Allocator, rt: *raytracer.Raytracer
     var amask: u32 = if (is_big_endian) 0x000000ff else 0xff000000;
     var pitch: u32 = stride;
 
-    const render_surface = c.SDL_CreateRGBSurfaceFrom(@ptrCast(*c_void, &image_cpu[0]), @intCast(c_int, width), @intCast(c_int, height), @intCast(c_int, ImageCpuBitDepth), @intCast(c_int, pitch), rmask, gmask, bmask, amask) orelse {
+    const render_surface = c.SDL_CreateRGBSurfaceFrom(@ptrCast(*anyopaque, &image_cpu[0]), @intCast(c_int, width), @intCast(c_int, height), @intCast(c_int, ImageCpuBitDepth), @intCast(c_int, pitch), rmask, gmask, bmask, amask) orelse {
         c.SDL_Log("Unable to create surface: %s", c.SDL_GetError());
         return error.SDLInitializationFailed;
     };
@@ -96,16 +96,16 @@ pub fn execute_main_loop(allocator: *std.mem.Allocator, rt: *raytracer.Raytracer
 
     while (!shouldExit) {
         const current_frame_time_ms: u32 = c.SDL_GetTicks();
-        const frame_delta_secs = @intToFloat(f32, current_frame_time_ms - last_frame_time_ms) * 0.001;
+        // const frame_delta_secs = @intToFloat(f32, current_frame_time_ms - last_frame_time_ms) * 0.001;
 
         // Poll events
         var sdlEvent: c.SDL_Event = undefined;
         while (c.SDL_PollEvent(&sdlEvent) > 0) {
-            switch (@intToEnum(c.SDL_EventType, @intCast(c_int, sdlEvent.type))) {
-                .SDL_QUIT => {
+            switch (sdlEvent.type) {
+                c.SDL_QUIT => {
                     shouldExit = true;
                 },
-                .SDL_KEYDOWN => {
+                c.SDL_KEYDOWN => {
                     if (sdlEvent.key.keysym.sym == c.SDLK_ESCAPE)
                         shouldExit = true;
                 },

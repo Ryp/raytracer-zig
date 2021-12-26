@@ -56,7 +56,7 @@ pub const RaytracerState = struct {
     rng: std.rand.Xoroshiro128, // Hardcode PRNG type for forward compatibility
 };
 
-pub fn create_raytracer_state(allocator: *std.mem.Allocator, extent: u32_2, seed: u64) !RaytracerState {
+pub fn create_raytracer_state(allocator: std.mem.Allocator, extent: u32_2, seed: u64) !RaytracerState {
     assert(all(extent >= FramebufferExtentMin));
     assert(all(extent <= FramebufferExtentMax));
 
@@ -89,7 +89,7 @@ pub fn create_raytracer_state(allocator: *std.mem.Allocator, extent: u32_2, seed
     };
 }
 
-pub fn destroy_raytracer_state(allocator: *std.mem.Allocator, rt: *RaytracerState) void {
+pub fn destroy_raytracer_state(allocator: std.mem.Allocator, rt: *RaytracerState) void {
     allocator.free(rt.ray_queries);
 
     allocator.free(rt.work_queue);
@@ -221,7 +221,7 @@ fn lookAt(viewPosition: f32_3, targetPosition: f32_3, upDirection: f32_3) f32_3x
     };
 }
 
-fn sampleDistribution(metalness: f32, normal: f32_3, sample: f32_3) f32_3 {
+fn sampleDistribution(normal: f32_3, sample: f32_3) f32_3 {
     const sampleOriented = sample * @splat(3, sign(dot(normal, sample)));
     return sampleOriented;
 }
@@ -320,12 +320,12 @@ fn shade(scene: Scene, rng: *std.rand.Xoroshiro128, ray: Ray, steps: u32) f32_3 
                 var accum: f32_3 = .{};
                 while (i < diffuse_sample_count) : (i += 1) {
                     const random_f32_3 = f32_3{
-                        rng.random.float(f32) * 2.0 - 1.0,
-                        rng.random.float(f32) * 2.0 - 1.0,
-                        rng.random.float(f32) * 2.0 - 1.0,
+                        rng.random().float(f32) * 2.0 - 1.0,
+                        rng.random().float(f32) * 2.0 - 1.0,
+                        rng.random().float(f32) * 2.0 - 1.0,
                     };
                     var randomSample = normalize(random_f32_3);
-                    randomSample = sampleDistribution(mat.metalness, hitResult.normal_ws, randomSample);
+                    randomSample = sampleDistribution(hitResult.normal_ws, randomSample);
                     const reflectedRay = Ray{ .origin = hitResult.position_ws, .direction = randomSample };
 
                     accum += shade(scene, rng, reflectedRay, steps - 1);
